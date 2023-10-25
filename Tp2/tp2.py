@@ -240,7 +240,7 @@ class Gridworld:
     
             
 
-gridworld = Gridworld(12, 2)
+gridworld = Gridworld(12, 1)
 #gridworld.printGridworld()
 gridworld.printRewards()
 gridworld.printLigneColonne()
