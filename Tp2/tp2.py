@@ -1,253 +1,165 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Sun Mar 19 09:50:57 2023
-
-@author: pikam
-"""
-
 import numpy as np
-import copy
 
+# Define the parameters of the MDP
+k = 12
+version = 2 #version 1 ou 2
 
-class Gridworld:
-    escompte = 0.5
+# Initial state
+start_state = (11, 0)
 
-    def __init__(self, k, version):
-        assert (version == 1 or version == 2), "erreur dans la version, soit 1 (sans pièges) ou 2 (avec pièges)"
-        self.k = k
-        self.matriceValue = np.zeros((self.k,self.k))
-        self.matriceReward = np.zeros((self.k, self.k))
-        self.matriceActions = np.full((self.k, self.k),"N")
-        self.start = [0, 0]
-        for i in range(0,self.k):
-            for j in range(0,self.k):
-                self.matriceReward[i][j] = -1
-        self.matriceReward[self.k-1][self.k-1] = 2*(self.k-1)
-        
-        if version == 2:
-            
-            for j in range(0,8):
-                self.matriceReward[3][j] = -2*(self.k-1)
-            for j in range(4,12):
-                self.matriceReward[7][j] = -2*(self.k-1)
+# Reward matrix
+rewards = np.zeros((k, k))
+for i in range(0, k):
+    for j in range(0, k):
+        rewards[i, j] = -1
+rewards[0, k - 1] = 2 * (k - 1)
 
-        
+if version == 2 :
+    for j in range(0, 8):
+        rewards[8][j] = -2 * (k - 1)
+    for j in range(4, 12):
+        rewards[4][j] = -2 * (k - 1)
+
+gamma = 0.9
+
+print(rewards)
+
+# Stopping condition for value iteration
+epsilon = 0.001
+
+# Initialize the values of all states to 0
+values = np.zeros((k, k))
+
+def valueIteration():
+    # Apply the value iteration algorithm
+    while True:
+        delta = 0
+        for i in range(0, k):
+            for j in range(0, k):
+                state = (i, j)
+                max_value = float('-inf')
+                for action in ["N", "S", "O", "E"]:
+                    next_state = state
+                    if next_state in [(8, 0), (8, 1), (8, 2), (8, 3), (8, 4), (8, 5), (8, 6), (8, 7), (4, 4), (4, 5),
+                                      (4, 6), (4, 7), (4, 8), (4, 9), (4, 10), (4, 11)]:
+                        continue
+                    if action == "N":
+                        next_state = (i - 1, j)
+                    elif action == "S":
+                        next_state = (i + 1, j)
+                    elif action == "O":
+                        next_state = (i, j - 1)
+                    elif action == "E":
+                        next_state = (i, j + 1)
     
-    def printGridworld(self):
-        for ligne in range(self.k-1, -1, -1) :
-            for colonne in range(self.k) :
-                print(self.matriceValue[ligne, colonne], end="  ")
-            print("\n")
-            
-    def printRewards(self):
-        for ligne in range(self.k-1, -1, -1) :
-            for colonne in range(self.k) :
-                print(self.matriceReward[ligne, colonne], end="  ")
-            print("\n")
-            
-    def printLigneColonne(self):
-        for ligne in range(self.k-1, -1, -1) :
-            for colonne in range(self.k) :
-                print("(",ligne, colonne,")", end="  ")
-            print("\n")
-            
-            
-    def recompenseEsperee(self, action, etat): #etat un couple état/action, retourne la récompense espérée
-        probas = [1,1,1,1] #probaN(0), probaS(1), probaO(2), probaE(3)
-        xN = etat[0]+1
-        yN = etat[1] 
-        xO = etat[0]
-        yO = etat[1]-1
-        xS = etat[0]-1
-        yS = etat[1]
-        xE = etat[0]
-        yE = etat[1]+1
-        
-        #déplacement impossible :
-        if xN >= self.k :
-            probas[0] = 0
-        if yO < 0 :
-            probas[2] = 0
-        if yE >= self.k :
-            probas[3] = 0
-        if xS < 0 :
-            probas[1] = 0
-            
-        result = 0
-        
-        if action == "N":
-            if probas[0] == 0 :
-                return self.matriceValue[etat[0], etat[1]]
-            else :
-                result = result + self.matriceValue[xN, yN]*0.8
-                
-            if probas[2] != 0: #si je peux aller à gauche
-                if probas[3] != 0: #si je peux aller à droite
-                    return result+ self.matriceValue[xO, yO]*0.1 + self.matriceValue[xE, yE]*0.1
-                else :
-                    return result + self.matriceValue[xO, yO]*0.2
-            elif probas[3] != 0:
-                    return result + self.matriceValue[xE, yE]*0.2
-            else :
-                return result + self.matriceValue[xS, yS]*0.2
-                
-            
-        elif action == "S":
-            if probas[1] == 0 :
-                return self.matriceValue[etat[0], etat[1]]
-            else :
-                result = result + self.matriceValue[xS, yS]*0.8
-                
-            if probas[2] != 0: #si je peux aller à gauche
-                if probas[3] != 0: #si je peux aller à droite
-                    return result+ self.matriceValue[xO, yO]*0.1 + self.matriceValue[xE, yE]*0.1
-                else :
-                    return result + self.matriceValue[xO, yO]*0.2
-            elif probas[3] != 0:
-                    return result + self.matriceValue[xE, yE]*0.2
-            else :
-                return result + self.matriceValue[xN, yN]*0.2
-                
-        
-        elif action == "O":
-            if probas[2] == 0 :
-                return self.matriceValue[etat[0], etat[1]]
-            else :
-                result = result + self.matriceValue[xO, yO]*0.8
-                
-            if probas[0] != 0: #si je peux aller au nord
-                if probas[1] != 0: #si je peux aller au sud
-                    return result+ self.matriceValue[xN, yN]*0.1 + self.matriceValue[xS, yS]*0.1
-                else :
-                    return result + self.matriceValue[xN, yN]*0.2
-            elif probas[1] != 0:
-                    return result + self.matriceValue[xS, yS]*0.2
-            else :
-                return result + self.matriceValue[xE, yE]*0.2
+                    if 0 <= next_state[0] < k and 0 <= next_state[1] < k:
+                        action_value = rewards[next_state[0], next_state[1]] + gamma * values[next_state[0], next_state[1]]
+                        if action_value > max_value:
+                            max_value = action_value
+    
+                delta = max(delta, abs(values[i, j] - max_value))
+                values[i, j] = max_value
+    
+        if delta < epsilon:
+            break
 
-        
-        elif action == "E":
-            if probas[3] == 0 :
-                return self.matriceValue[etat[0], etat[1]]
-            else :
-                result = result + self.matriceValue[xE, yE]*0.8
-                
-            if probas[0] != 0: #si je peux aller au nord
-                if probas[1] != 0: #si je peux aller au sud
-                    return result+ self.matriceValue[xN, yN]*0.1 + self.matriceValue[xS, yS]*0.1
-                else :
-                    return result + self.matriceValue[xN, yN]*0.2
-            elif probas[1] != 0:
-                    return result + self.matriceValue[xS, yS]*0.2
-            else :
-                return result + self.matriceValue[xO, yO]*0.2
-        
-        
-    """def allProbas(self):
-        actions = ["N","S","O","E"]
-        for ligne in range(self.n) :
-            for colonne in range(self.m) :
-                for action in actions :
-                    print(ligne, colonne, action, self.p(action,[ligne,colonne]))"""
-                    
-                    
-                    
-    def iteValeur(self): #value iteration
-        compteur = 0
-        
-        converge = False
-        while converge == False : #1ere loop
-            delta = 0
-            self.printGridworld()
-            print("\n")
-            actions = ["N", "S", "O", "E"]
-            for ligne in range(self.k): #2e loop sur les états
-                for colonne in range(self.k): #2e loop sur les états
-                    temp = self.matriceValue[ligne][colonne] #save old value de v
-                    valeurMax = -1000
-                    #actionMax = ""
-                    for action in actions :
-                        valeur = self.recompenseEsperee(action,[ligne,colonne]) #p(s'|s,a)*v(s')
-                        if valeur > valeurMax :
-                            valeurMax = valeur
-                            #actionMax = action
-                    compteur = compteur +1
-                    self.matriceValue[ligne][colonne] = self.escompte*valeurMax + self.matriceReward[ligne][colonne]
-                    #self.matriceActions[ligne][colonne] = actionMax
-                    delta = max(delta, abs(temp - self.matriceValue[ligne][colonne]))
-            if delta < 0.001:
-                converge = True
-        #print(compteur)
-        #return self.matriceActions
-        
-        
-    def getPolicy(self): #pour avoir les actions de la politique optimale après la value iteration
-        
-        actions = ["N", "S", "O", "E"]
-        for ligne in range(self.k):
-            for colonne in range(self.k):
-                valeurMax = -1000
-                actionMax = ""
-                for action in actions :
-                    valeur = self.recompenseEsperee(action,[ligne,colonne])
-                    if valeur > valeurMax:
-                        valeurMax = valeur
-                        actionMax = action
-                self.matriceActions[ligne][colonne] = actionMax
-        return self.matriceActions
-            
-                
-    def iteValeurBis(self, compteur): #partie Evaluation de la Policy Iteration
-        converge = False
-        while converge == False : #1ere loop
-            delta = 0
-            self.printGridworld()
-            print("\n")
-            for ligne in range(self.k): #2e loop sur les états
-                for colonne in range(self.k): #2e loop sur les états
-                    temp = self.matriceValue[ligne][colonne] #save old value v
-                    action = self.matriceActions[ligne][colonne] #action en fonction de la politique
-                    valeur = self.recompenseEsperee(action,[ligne,colonne])  #p(s'|s,a)*v(s')
+# Define the optimal policy
+policy = np.empty((k, k), dtype=str)
+
+
+def get_optimal_policy():
+    for i in range(k):
+        for j in range(k):
+            state = (i, j)
+            max_action = None
+            max_value = float('-inf')
+            for action in ["N", "S", "O", "E"]:
+                next_state = state
+                if action == "N":
+                    next_state = (i - 1, j)
+                elif action == "S":
+                    next_state = (i + 1, j)
+                elif action == "O":
+                    next_state = (i, j - 1)
+                elif action == "E":
+                    next_state = (i, j + 1)
+
+                if 0 <= next_state[0] < k and 0 <= next_state[1] < k:
+                    action_value = rewards[next_state[0], next_state[1]] + gamma * values[next_state[0], next_state[1]]
+                    if action_value > max_value:
+                        max_value = action_value
+                        max_action = action
+            policy[i, j] = max_action
+    return policy
+
+
+
+def iteValeurBis(compteur): #partie Evaluation de la Policy Iteration
+    converge = False
+    while converge == False : #1ere loop
+        delta = 0
+        #printGridworld()
+        #print("\n")
+        for ligne in range(k): #2e loop sur les états
+            for colonne in range(k): #2e loop sur les états
+                temp = values[ligne][colonne] #save old value v
+                action = policy[ligne][colonne] #action en fonction de la politique
+                next_state = (ligne, colonne)
+                if next_state in [(8, 0), (8, 1), (8, 2), (8, 3), (8, 4), (8, 5), (8, 6), (8, 7), (4, 4), (4, 5),
+                                  (4, 6), (4, 7), (4, 8), (4, 9), (4, 10), (4, 11)]:
+                    continue
+                if action == "N":
+                    next_state = (ligne - 1, colonne)
+                elif action == "S":
+                    next_state = (ligne + 1, colonne)
+                elif action == "O":
+                    next_state = (ligne, colonne - 1)
+                elif action == "E":
+                    next_state = (ligne, colonne + 1)
+                if 0 <= next_state[0] < k and 0 <= next_state[1] < k:
                     compteur = compteur + 1
-                    self.matriceValue[ligne][colonne] = self.escompte*valeur + self.matriceReward[ligne][colonne]
-                    delta = max(delta, abs(temp - self.matriceValue[ligne][colonne]))
-            if delta < 0.001:
-                converge = True
-        #print(compteur)
-        return compteur
-                
-
-        
-    def getPolicyBis(self): #le reste de la Policy Iteration, la fonction à appeler
-        matriceActionPrec = np.full((self.k, self.k),"N")
-        converge = False
-        compteur = 0
-        while converge == False :
-            compteur = self.iteValeurBis(compteur)
-            matriceActionNew = self.getPolicy()
+                    values[ligne][colonne] = gamma*values[next_state[0], next_state[1]] + rewards[next_state[0], next_state[1]]
+                    delta = max(delta, abs(temp - values[ligne][colonne]))
+        if delta < epsilon:
             converge = True
-            for ligne in range(self.k):
-                for colonne in range(self.k):
-                    if matriceActionPrec[ligne][colonne] != matriceActionNew[ligne][colonne]:
-                        converge = False
-            for ligne in range(self.k):
-                for colonne in range(self.k):
-                    matriceActionPrec[ligne][colonne] = matriceActionNew[ligne][colonne]
-        return matriceActionPrec
-            
-    
-
-    
+    #print(compteur)
+    return compteur
             
 
-gridworld = Gridworld(12, 1)
-#gridworld.printGridworld()
-gridworld.printRewards()
-gridworld.printLigneColonne()
-#gridworld.allProbas
+    
+def getPolicyBis(): #le reste de la Policy Iteration, la fonction à appeler
+    matriceActionPrec = np.full((k, k),"N")
+    converge = False
+    compteur = 0
+    while converge == False :
+        compteur = iteValeurBis(compteur)
+        matriceActionNew = get_optimal_policy()
+        converge = True
+        for ligne in range(k):
+            for colonne in range(k):
+                if matriceActionPrec[ligne][colonne] != matriceActionNew[ligne][colonne]:
+                    converge = False
+        for ligne in range(k):
+            for colonne in range(k):
+                matriceActionPrec[ligne][colonne] = matriceActionNew[ligne][colonne]
+    return matriceActionPrec
 
-#print(gridworld.iteValeur())
-gridworld.iteValeur()
-print(gridworld.getPolicy())
 
-#print(gridworld.getPolicyBis())
+
+
+def printGridworld():
+    for ligne in range(k - 1, 0, -1):
+        for colonne in range(k):
+            print(ligne, colonne, end=" ")
+        print("\n")
+
+
+# Print the optimal values and policy
+# print("Optimal Values:")
+# print(values)
+print("Optimal Policy:")
+#printGridworld()
+valueIteration()
+print(get_optimal_policy())
+
+#print(getPolicyBis())
