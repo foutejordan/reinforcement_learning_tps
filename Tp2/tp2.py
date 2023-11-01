@@ -23,7 +23,7 @@ if version == 2 :
 gamma = 0.9
 
 
-print(rewards)
+#print(rewards)
 
 # Stopping condition for value iteration
 epsilon = 0.001
@@ -66,7 +66,6 @@ def valueIteration():
 
 # Define the optimal policy
 policy = np.empty((k, k), dtype=str)
-
 
 def get_optimal_policy():
     for i in range(k):
@@ -159,16 +158,21 @@ def printGridworld():
 
 ####################### SARSA
 
-alpha = 0.5
+alpha = 0.1
+gamma = 0.9
+
 #actions ordre : "N"(0), "S"(1), "O"(2), "E"(3)
 listeActions = ["N", "S", "O", "E"]
-q = np.random.rand(k,k, 4)
+#q = np.random.rand(k,k, 4)
+q = np.zeros((k,k, 4))
+
 rewards = np.zeros((k,k))
 for i in range(0, k):
     for j in range(0, k):
         rewards[i, j] = -1
 rewards[0, k - 1] = 2 * (k - 1)
-version = 1
+
+version = 2
 q[0, k - 1, 0] = 0
 q[0, k - 1, 1] = 0
 q[0, k - 1, 2] = 0
@@ -202,39 +206,97 @@ def egreedy(s, epsilon):
     action = np.random.choice(listeActions, p=listeProbas) 
     return action
 
-def sarsa(etatsAbsorbant):
-    epsilon = 0.1
-    for episode in range(0,100):
-        s = (11, 0)
+"""def egreedy(state, epsilon):
+    if np.random.rand() < epsilon:
+        temp = np.random.choice(4)
+        return listeActions[temp]
+    else:
+        temp = np.argmax(q[state])
+        return listeActions[temp]"""
+
+def get_next_state(s,action):
+    next_s = (s[0], s[1])
+    if action == "N":
+        next_s = (s[0] - 1, s[1])
+    elif action == "S":
+        next_s = (s[0] + 1, s[1])
+    elif action == "O":
+        next_s = (s[0], s[1] - 1)
+    elif action == "E":
+        next_s = (s[0], s[1] + 1)
+    return next_s
+
+def verif_state(s, action, next_s, epsilon):
+    while not (0 <= next_s[0] < k and 0 <= next_s[1] < k):
         action = egreedy(s, epsilon)
-        
-        while s not in etatsAbsorbant:
-            if action == "N":
-                next_s = (s[0] - 1, s[1])
-            elif action == "S":
-                next_s = (s[0] + 1, s[1])
-            elif action == "O":
-                next_s = (s[0], s[1] - 1)
-            elif action == "E":
-                next_s = (s[0], s[1] + 1)
-            if 0 <= next_s[0] < k and 0 <= next_s[1] < k:
-                next_action = egreedy(s, epsilon)
-                print(s[0], s[1], next_s[0], next_s[1])
-                q[s[0], s[1],listeActions.index(action)] = (1 - alpha)*q[s[0], s[1], listeActions.index(action)] + alpha*(rewards[next_s[0], next_s[1]] + q[next_s[0], next_s[1], listeActions.index(next_action)])
-                s = next_s
-                action = next_action
+        next_s = get_next_state(s, action)
+    return next_s, action
 
-optimal_policy = np.empty((k, k), dtype=str)
+def sarsa(etatsAbsorbant):
+    epsilon = 1
+    for episode in range(0,1000):
+        t = 0
+        s = (11, 0) #init state s 
+        action = egreedy(s, epsilon) #choose a from s (egreedy)
+        print(episode)
+        while s not in etatsAbsorbant: #2e boucle
+            print(s, action)
+            t = t +1
+            epsilon = 1/t
+            next_s = get_next_state(s, action) #s'
+            #verif si s' est bien dans les limites, sinon recommence... :
+            next_s, action = verif_state(s, action, next_s, epsilon) 
+            
+            next_action = egreedy(next_s, epsilon) #choose a' from s' (egreedy)
+            next_next_s = get_next_state(next_s, next_action) #s''
+            #verif si s'' est bien dans les limites, sinon recommence... :
+            next_next_s, next_action = verif_state(next_s, next_action, next_next_s, epsilon)
+            
+            #print(s[0], s[1], next_s[0], next_s[1])
+            q[s[0], s[1],listeActions.index(action)] = (1 - alpha)*q[s[0], s[1], listeActions.index(action)] + alpha*(rewards[next_s[0], next_s[1]] + gamma*q[next_s[0], next_s[1], listeActions.index(next_action)])
+            s = next_s
+            action = next_action
+            
+        #pour actualiser q sur les états absorbant
+        for i in range(3):
+            q[s[0], s[1],listeActions.index(action)] = (1 - alpha)*q[s[0], s[1], listeActions.index(action)] + alpha*(rewards[next_s[0], next_s[1]] + gamma*q[next_s[0], next_s[1], listeActions.index(next_action)])
 
-for i in range(k):
-    for j in range(k):
-        state = (i, j)
-        optimal_action = ['N', 'S', 'O', 'E'][np.argmax(q[state[0], state[1]])]
-        optimal_policy[i, j] = optimal_action
 
-sarsa(etatsAbsorbant)
-print(optimal_policy)        
-        
+
+"""def optimalPolicySARSA():
+    optimal_policy = np.empty((k, k), dtype=str)
+    
+    for i in range(k):
+        for j in range(k):
+            state = (i, j)
+            print(np.argmax(q[state[0], state[1]]))
+            optimal_action = ['N', 'S', 'O', 'E'][np.argmax(q[state[0], state[1]])]
+            optimal_policy[i, j] = optimal_action
+    return optimal_policy"""
+
+
+def optimalPolicySARSA():
+    optimal_policy = np.empty((k, k), dtype=str)
+    
+    for i in range(k):
+        for j in range(k):
+            state = (i, j)
+            max_action = None
+            max_value = float('-inf')
+            for action in ["N", "S", "O", "E"]:
+                next_state = get_next_state(state, action)
+                if 0 <= next_state[0] < k and 0 <= next_state[1] < k:
+                    action_value = q[state[0], state[1], listeActions.index(action)]
+                    if action_value > max_value:
+                        max_value = action_value
+                        max_action = action
+            
+            optimal_policy[i, j] = max_action
+    return optimal_policy
+
+"""sarsa(etatsAbsorbant)
+print(optimalPolicySARSA())        
+print(q)"""
 
 
 # Print the optimal values and policy
@@ -242,7 +304,7 @@ print(optimal_policy)
 # print(values)
 print("Optimal Policy:")
 #printGridworld()
-"""valueIteration()
-print(get_optimal_policy())"""
+valueIteration()
+print(get_optimal_policy())
 
 #print(policyIteration())
