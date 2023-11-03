@@ -158,6 +158,8 @@ def printGridworld():
 
 ####################### SARSA
 
+#hyperparamètres v1 : alpha 0.1 gamma 0.9
+#hyparamètres v2 : pareil que v1
 alpha = 0.1
 gamma = 0.9
 
@@ -258,9 +260,9 @@ def sarsa(etatsAbsorbant):
             action = next_action
             
         #pour actualiser q sur les états absorbant
-        for i in range(3):
+        """for i in range(3):
             q[s[0], s[1],listeActions.index(action)] = (1 - alpha)*q[s[0], s[1], listeActions.index(action)] + alpha*(rewards[next_s[0], next_s[1]] + gamma*q[next_s[0], next_s[1], listeActions.index(next_action)])
-
+"""
 
 
 """def optimalPolicySARSA():
@@ -294,9 +296,147 @@ def optimalPolicySARSA():
             optimal_policy[i, j] = max_action
     return optimal_policy
 
-"""sarsa(etatsAbsorbant)
+sarsa(etatsAbsorbant)
 print(optimalPolicySARSA())        
+print(q)
+
+
+
+########### Q LEARNING
+    
+#hyperparamètres pour v1 : alpha 0.1 gamma 0.9
+#hyperparamètres pour v2 : alpha 0.2 gamma 0.9
+
+alpha = 0.2
+gamma = 0.9
+
+#actions ordre : "N"(0), "S"(1), "O"(2), "E"(3)
+listeActions = ["N", "S", "O", "E"]
+#q = np.random.rand(k,k, 4)
+q = np.zeros((k,k, 4))
+
+rewards = np.zeros((k,k))
+for i in range(0, k):
+    for j in range(0, k):
+        rewards[i, j] = -1
+rewards[0, k - 1] = 2 * (k - 1)
+
+version = 2
+q[0, k - 1, 0] = 0
+q[0, k - 1, 1] = 0
+q[0, k - 1, 2] = 0
+q[0, k - 1, 3] = 0
+rewards[0, k - 1] = 2 * (k - 1)
+etatsAbsorbant = [(0, k-1)]
+
+if version == 2 :
+    etatsAbsorbant = [(0, k-1), (8, 0), (8, 1), (8, 2), (8, 3), (8, 4), (8, 5), (8, 6), (8, 7), (4, 4), (4, 5),
+                      (4, 6), (4, 7), (4, 8), (4, 9), (4, 10), (4, 11)]
+    for j in range(0, 8):
+        rewards[8][j] = -2 * (k - 1)
+        q[8, j, 0] = 0
+        q[8, j, 1] = 0
+        q[8, j, 2] = 0
+        q[8, j, 3] = 0
+    for j in range(4, 12):
+        rewards[4][j] = -2 * (k - 1)
+        q[4, j, 0] = 0
+        q[4, j, 1] = 0
+        q[4, j, 2] = 0
+        q[4, j, 3] = 0
+        
+#print(rewards)
+
+def egreedy(s, epsilon):
+    indiceActionMax = np.argmax(q[s])
+    aMax = listeActions[indiceActionMax]
+    listeProbas = [epsilon/4,epsilon/4,epsilon/4,epsilon/4]
+    listeProbas[indiceActionMax] = (1-epsilon)+(epsilon/4)
+    action = np.random.choice(listeActions, p=listeProbas) 
+    return action
+
+"""def egreedy(state, epsilon):
+    if np.random.rand() < epsilon:
+        temp = np.random.choice(4)
+        return listeActions[temp]
+    else:
+        temp = np.argmax(q[state])
+        return listeActions[temp]"""
+
+def get_next_state(s,action):
+    next_s = (s[0], s[1])
+    if action == "N":
+        next_s = (s[0] - 1, s[1])
+    elif action == "S":
+        next_s = (s[0] + 1, s[1])
+    elif action == "O":
+        next_s = (s[0], s[1] - 1)
+    elif action == "E":
+        next_s = (s[0], s[1] + 1)
+    return next_s
+
+def verif_state(s, action, next_s, epsilon):
+    while not (0 <= next_s[0] < k and 0 <= next_s[1] < k):
+        action = egreedy(s, epsilon)
+        next_s = get_next_state(s, action)
+    return next_s, action
+
+def qlearning(etatsAbsorbant):
+    epsilon = 1
+    for episode in range(0,1000):
+        t = 0
+        s = (11, 0) #init state s 
+        print(episode)
+        while s not in etatsAbsorbant: #2e boucle
+            action = egreedy(s, epsilon) #choose a from s (egreedy)
+            print(s, action)
+            t = t +1
+            epsilon = 1/t
+            next_s = get_next_state(s, action) #s'
+            #verif si s' est bien dans les limites, sinon recommence... :
+            next_s, action = verif_state(s, action, next_s, epsilon) 
+                
+            max_action = None
+            max_value = float('-inf')
+            for action_tmp in ["N", "S", "O", "E"]:
+                next_next_state = get_next_state(next_s, action_tmp)
+                if 0 <= next_next_state[0] < k and 0 <= next_next_state[1] < k :
+                    action_value = q[next_next_state[0], next_next_state[1], listeActions.index(action_tmp)]
+                    if action_value > max_value:
+                        max_value = action_value
+                        max_action = action_tmp
+            
+            #print(s[0], s[1], next_s[0], next_s[1])
+            q[s[0], s[1],listeActions.index(action)] = (1 - alpha)*q[s[0], s[1], listeActions.index(action)]+ alpha*(rewards[next_s[0], next_s[1]] + gamma*q[next_s[0], next_s[1], listeActions.index(max_action)])
+            s = next_s
+            
+
+
+
+def optimalPolicyQlearning():
+    optimal_policy = np.empty((k, k), dtype=str)
+    
+    for i in range(k):
+        for j in range(k):
+            state = (i, j)
+            max_action = None
+            max_value = float('-inf')
+            for action in ["N", "S", "O", "E"]:
+                next_state = get_next_state(state, action)
+                if 0 <= next_state[0] < k and 0 <= next_state[1] < k:
+                    action_value = q[state[0], state[1], listeActions.index(action)]
+                    if action_value > max_value:
+                        max_value = action_value
+                        max_action = action
+            
+            optimal_policy[i, j] = max_action
+    return optimal_policy
+
+"""qlearning(etatsAbsorbant)
+print(optimalPolicyQlearning())        
 print(q)"""
+
+
 
 
 # Print the optimal values and policy
@@ -304,7 +444,7 @@ print(q)"""
 # print(values)
 print("Optimal Policy:")
 #printGridworld()
-valueIteration()
-print(get_optimal_policy())
+"""valueIteration()
+print(get_optimal_policy())"""
 
 #print(policyIteration())
