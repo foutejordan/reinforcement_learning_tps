@@ -153,7 +153,7 @@ def printGridworld():
             print(ligne, colonne, end=" ")
         print("\n")
         
-  
+printGridworld()
 
 
 ####################### SARSA
@@ -296,9 +296,9 @@ def optimalPolicySARSA():
             optimal_policy[i, j] = max_action
     return optimal_policy
 
-sarsa(etatsAbsorbant)
+"""sarsa(etatsAbsorbant)
 print(optimalPolicySARSA())        
-print(q)
+print(q)"""
 
 
 
@@ -312,6 +312,7 @@ gamma = 0.9
 
 #actions ordre : "N"(0), "S"(1), "O"(2), "E"(3)
 listeActions = ["N", "S", "O", "E"]
+
 #q = np.random.rand(k,k, 4)
 q = np.zeros((k,k, 4))
 
@@ -440,9 +441,149 @@ print(q)"""
 
 ####### Monte Carlo :
     
+listeActions = ["N", "S", "O", "E"]
+q = np.zeros((k,k, 4))
+gamma = 0.9
+
+optimal_policy = np.empty((k, k), dtype=str)
+
+rewards = np.zeros((k,k))
+for i in range(0, k):
+    for j in range(0, k):
+        rewards[i, j] = -1
+        
+rewards[0, k - 1] = 2 * (k - 1)
+
+version = 2
+q[0, k - 1, 0] = 0
+q[0, k - 1, 1] = 0
+q[0, k - 1, 2] = 0
+q[0, k - 1, 3] = 0
+rewards[0, k - 1] = 2 * (k - 1)
+etatsAbsorbant = [(0, k-1)]
+
+if version == 2 :
+    etatsAbsorbant = [(0, k-1), (8, 0), (8, 1), (8, 2), (8, 3), (8, 4), (8, 5), (8, 6), (8, 7), (4, 4), (4, 5),
+                      (4, 6), (4, 7), (4, 8), (4, 9), (4, 10), (4, 11)]
+    for j in range(0, 8):
+        rewards[8][j] = -2 * (k - 1)
+        q[8, j, 0] = 0
+        q[8, j, 1] = 0
+        q[8, j, 2] = 0
+        q[8, j, 3] = 0
+    for j in range(4, 12):
+        rewards[4][j] = -2 * (k - 1)
+        q[4, j, 0] = 0
+        q[4, j, 1] = 0
+        q[4, j, 2] = 0
+        q[4, j, 3] = 0
+
+listeEtats = []
+returns = {}
+for i in range(k):
+    for j in range(k):
+        listeEtats.append((i,j))
+        for a in range(len(listeActions)):
+            returns["("+str(i)+","+str(j)+")"+listeActions[a]] = []
+#print(returns)
+#print(listeEtats)
+
+def get_next_state_mc(s,action):
+    next_s = (s[0], s[1])
+    if action == "N":
+        next_s = (s[0] - 1, s[1])
+    elif action == "S":
+        next_s = (s[0] + 1, s[1])
+    elif action == "O":
+        next_s = (s[0], s[1] - 1)
+    elif action == "E":
+        next_s = (s[0], s[1] + 1)
+    return next_s
+
+def verif_state_mc(s, action):
+    next_s = get_next_state_mc(s, action)
+    while not (0 <= next_s[0] < k and 0 <= next_s[1] < k):
+        _, action = exploringStarts()
+        next_s = get_next_state_mc(s, action)
+    return s, next_s, action
+
+
+def exploringStarts():
+    etat = np.random.choice(len(listeEtats),1)
+    action = np.random.choice(listeActions)
+    #print(listeEtats[etat[0]])
+    while listeEtats[etat[0]] in etatsAbsorbant:
+        etat = np.random.choice(len(listeEtats),1)
+    #print(listeEtats[etat[0]], action)
+    return listeEtats[etat[0]], action
+
+def optimal_policy_mc(st):
+    max_action = None
+    max_value = float('-inf')
+    for action in ["N", "S", "O", "E"]:
+        next_state = get_next_state(st, action)
+        if 0 <= next_state[0] < k and 0 <= next_state[1] < k:
+            action_value = q[st[0], st[1], listeActions.index(action)]
+            if action_value > max_value:
+                max_value = action_value
+                max_action = action
     
+    optimal_policy[st[0], st[1]] = max_action
     
 
+    
+
+def monteCarlo():
+    
+    for episode in range(0,10000):
+    
+        
+        listeS = []
+        listeA = []
+        listeR = []
+        etat, action = exploringStarts()
+        etat, next_s, action = verif_state_mc(etat, action)
+        listeS.append(etat)
+        listeA.append(action)
+        listeR.append(rewards[etat[0], etat[1]])
+        s = next_s
+        
+        
+        while s not in etatsAbsorbant:
+            listeS.append(s)
+            action = np.random.choice(listeActions)
+            s, next_s, action = verif_state_mc(s, action)
+            listeA.append(action)
+            listeR.append(rewards[etat[0], etat[1]])
+            s = next_s
+        listeR.append(rewards[s[0], s[1]])
+        
+        
+        """print(listeS, listeA, listeR)
+        print(s)"""
+        
+        g = 0
+        T = len(listeS)
+        
+        """print(len(listeS))
+        print(len(listeA))
+        print(len(listeR))"""
+        
+        for t in range(T-1, -1, -1):
+            #print(t, listeS[t])
+            g = gamma*g + listeR[t+1]
+            st = listeS[t]
+            print(listeS[0:t])
+            if st not in listeS[0:t] :
+                listeReturns = returns["("+str(st[0])+","+str(st[1])+")"+listeA[t]]
+                listeReturns.append(g)
+                returns["("+str(st[0])+","+str(st[1])+")"+listeA[t]] = listeReturns
+                #print("q", q[st[0], st[1]], listeActions.index(listeA[t]))
+                q[st[0], st[1], listeActions.index(listeA[t])] = np.mean(returns["("+str(st[0])+","+str(st[1])+")"+listeA[t]])
+                optimal_policy_mc(st)
+     
+monteCarlo()
+print(optimal_policy)
 
 
 
