@@ -441,11 +441,61 @@ print(q)"""
 
 ####### Monte Carlo :
     
+    
+listeEtats = []
+returns = {}
+for i in range(k):
+    for j in range(k):
+        listeEtats.append((i,j))
+        for a in range(len(listeActions)):
+            returns["("+str(i)+","+str(j)+")"+listeActions[a]] = []
+#print(returns)
+#print(listeEtats)
+    
+def exploringStarts():
+    etat = np.random.choice(len(listeEtats),1)
+    action = np.random.choice(listeActions)
+    #print(listeEtats[etat[0]])
+    while listeEtats[etat[0]] in etatsAbsorbant:
+        etat = np.random.choice(len(listeEtats),1)
+    #print(listeEtats[etat[0]], action)
+    return listeEtats[etat[0]], action
+    
+def get_next_state_mc(s,action):
+    next_s = (s[0], s[1])
+    if action == "N":
+        next_s = (s[0] - 1, s[1])
+    elif action == "S":
+        next_s = (s[0] + 1, s[1])
+    elif action == "O":
+        next_s = (s[0], s[1] - 1)
+    elif action == "E":
+        next_s = (s[0], s[1] + 1)
+    return next_s
+    
+def verif_state_mc(s, action):
+    next_s = get_next_state_mc(s, action)
+    while not (0 <= next_s[0] < k and 0 <= next_s[1] < k):
+        _, action = exploringStarts()
+        next_s = get_next_state_mc(s, action)
+    return s, next_s, action
+    
+
+
 listeActions = ["N", "S", "O", "E"]
 q = np.zeros((k,k, 4))
 gamma = 0.9
 
-optimal_policy = np.empty((k, k), dtype=str)
+#optimal_policy = np.empty((k, k), dtype=str)
+#optimal_policy= np.random.choice(listeActions)
+optimal_policy = np.random.choice(listeActions, size=(k, k))
+
+for i in range(k) :
+    for j in range(k) :
+        etat = [i,j]
+        etat, next_etat, action = verif_state_mc(etat, optimal_policy[etat[0], etat[1]])
+        optimal_policy[etat[0], etat[1]] = action
+        
 
 rewards = np.zeros((k,k))
 for i in range(0, k):
@@ -478,44 +528,8 @@ if version == 2 :
         q[4, j, 2] = 0
         q[4, j, 3] = 0
 
-listeEtats = []
-returns = {}
-for i in range(k):
-    for j in range(k):
-        listeEtats.append((i,j))
-        for a in range(len(listeActions)):
-            returns["("+str(i)+","+str(j)+")"+listeActions[a]] = []
-#print(returns)
-#print(listeEtats)
-
-def get_next_state_mc(s,action):
-    next_s = (s[0], s[1])
-    if action == "N":
-        next_s = (s[0] - 1, s[1])
-    elif action == "S":
-        next_s = (s[0] + 1, s[1])
-    elif action == "O":
-        next_s = (s[0], s[1] - 1)
-    elif action == "E":
-        next_s = (s[0], s[1] + 1)
-    return next_s
-
-def verif_state_mc(s, action):
-    next_s = get_next_state_mc(s, action)
-    while not (0 <= next_s[0] < k and 0 <= next_s[1] < k):
-        _, action = exploringStarts()
-        next_s = get_next_state_mc(s, action)
-    return s, next_s, action
 
 
-def exploringStarts():
-    etat = np.random.choice(len(listeEtats),1)
-    action = np.random.choice(listeActions)
-    #print(listeEtats[etat[0]])
-    while listeEtats[etat[0]] in etatsAbsorbant:
-        etat = np.random.choice(len(listeEtats),1)
-    #print(listeEtats[etat[0]], action)
-    return listeEtats[etat[0]], action
 
 def optimal_policy_mc(st):
     max_action = None
@@ -531,12 +545,19 @@ def optimal_policy_mc(st):
     optimal_policy[st[0], st[1]] = max_action
     
 
-    
+#q init aléatoire puis init policy avec e greedy en fonction de ce q
+#puis change pi que pour st à chaque ité
+#alpha 0.1 gamma 0.9    1000 ite
+#gen episode selon politique pi
+#avec epsilon devrait pas boucler lors de gen episode
+
+#marche v1 avec gamma 0.9 et 1000 ite
 
 def monteCarlo():
-    
+        
     for episode in range(0,10000):
-    
+        print(episode)
+        count = 0
         
         listeS = []
         listeA = []
@@ -549,10 +570,16 @@ def monteCarlo():
         s = next_s
         
         
-        while s not in etatsAbsorbant:
+        while s not in etatsAbsorbant and count < 144:
             listeS.append(s)
-            action = np.random.choice(listeActions)
-            s, next_s, action = verif_state_mc(s, action)
+            count = count + 1
+            
+            #action = np.random.choice(listeActions)
+            action = optimal_policy[s[0], s[1]]
+            
+            #s, next_s, action = verif_state_mc(s, action)
+            next_s = get_next_state_mc(s, action)
+            
             listeA.append(action)
             listeR.append(rewards[etat[0], etat[1]])
             s = next_s
