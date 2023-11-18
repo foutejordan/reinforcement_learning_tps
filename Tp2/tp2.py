@@ -545,13 +545,10 @@ def optimal_policy_mc(st):
     optimal_policy[st[0], st[1]] = max_action
     
 
-#q init aléatoire puis init policy avec e greedy en fonction de ce q
-#puis change pi que pour st à chaque ité
-#alpha 0.1 gamma 0.9    1000 ite
-#gen episode selon politique pi
-#avec epsilon devrait pas boucler lors de gen episode
+
 
 #marche v1 avec gamma 0.9 et 1000 ite
+#marche v2 en augmentant ite à 10000
 
 def monteCarlo():
         
