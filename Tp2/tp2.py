@@ -2,7 +2,7 @@ import numpy as np
 
 # Define the parameters of the MDP
 k = 12
-version = 2 #version 1 ou 2
+version = 1 #version 1 ou 2
 
 # Initial state
 start_state = (11, 0)
@@ -606,8 +606,8 @@ def monteCarlo():
                 q[st[0], st[1], listeActions.index(listeA[t])] = np.mean(returns["("+str(st[0])+","+str(st[1])+")"+listeA[t]])
                 optimal_policy_mc(st)
      
-monteCarlo()
-print(optimal_policy)
+# monteCarlo()
+# print(optimal_policy)
 
 
 
@@ -618,7 +618,7 @@ print(optimal_policy)
 # print(values)
 print("Optimal Policy:")
 #printGridworld()
-"""valueIteration()
-print(get_optimal_policy())"""
+valueIteration()
+print(get_optimal_policy())
 
 #print(policyIteration())
