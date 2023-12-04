@@ -153,7 +153,7 @@ def printGridworld():
             print(ligne, colonne, end=" ")
         print("\n")
         
-printGridworld()
+# printGridworld()
 
 
 ####################### SARSA
